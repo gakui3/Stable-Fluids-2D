@@ -8,9 +8,8 @@ void main() {
       vec2 vel = vec2(0.0, 0.0);
 
       if(dist < 0.01){
-            vel = vec2(1.0, 0.0);
+            vel = vec2(1.0, 1.0);
       }
 
       gl_FragColor = vec4(vel.x, vel.y, 0.0, 1.0);
-      
 }

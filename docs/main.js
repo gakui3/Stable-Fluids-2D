@@ -2,9 +2,10 @@ import * as THREE from "three";
 import {GUI} from "three/examples/jsm/libs/dat.gui.module";
 import {EffectComposer} from "three/examples/jsm/postprocessing/EffectComposer.js";
 import {ShaderPass} from "three/examples/jsm/postprocessing/ShaderPass.js";
-import CommonVert from "./shaders/common.vert";
-import AddVelocity from "./shaders/addVelocity.frag";
-import DiffuseVelocity from "./shaders/diffuseVelocity.frag";
+
+import CommonVert from "./shaders/common.vert?raw";
+import AddVelocity from "./shaders/addVelocity.frag?raw";
+import DiffuseVelocity from "./shaders/diffuseVelocity.frag?raw";
 
 let canvas, renderer, scene, camera, geometry, gui;
 
@@ -21,7 +22,7 @@ const param = {
 function init() {
   canvas = document.querySelector("#c");
   renderer = new THREE.WebGLRenderer({canvas});
-  //背景色を白に設定
+  // 背景色を白に設定
   renderer.setClearColor(0xffffff);
   document.body.appendChild(renderer.domElement);
   scene = new THREE.Scene();
@@ -37,7 +38,7 @@ function init() {
     generateMipmaps: false,
   });
 
-  //add velocity
+  // add velocity
   AddVelocityComposer = new EffectComposer(renderer, velocityRT);
   AddVelocityComposer.renderToScreen = false;
 
@@ -47,7 +48,7 @@ function init() {
   });
   AddVelocityComposer.addPass(addVelocityPass);
 
-  //diffuse velocity
+  // diffuse velocity
   DiffuseVelocityComposer = new EffectComposer(renderer, velocityRT);
   DiffuseVelocityComposer.renderToScreen = false;
 
@@ -65,7 +66,7 @@ function addCamera() {
 }
 
 function addObject() {
-  //plane geometryを追加
+  // plane geometryを追加
   geometry = new THREE.PlaneGeometry(1, 1);
 
   const mat = new THREE.MeshBasicMaterial({map: velocityRT.texture});
@@ -102,7 +103,7 @@ function update() {
   }
 
   AddVelocityComposer.render();
-  DiffuseVelocityComposer.render();
+  // DiffuseVelocityComposer.render();
 
   renderer.render(scene, camera);
 }
