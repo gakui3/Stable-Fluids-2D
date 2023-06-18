@@ -1,7 +1,5 @@
-#include <common>
-
-varying vec3 v2f_position;
-varying vec2 v2f_uv;
+in vec3 v2f_position;
+in vec2 v2f_uv;
 
 const int w = 1024;
 const int h = 1024;

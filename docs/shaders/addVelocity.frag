@@ -1,15 +1,20 @@
-#include <common>
+precision highp float;
 
-varying vec3 v2f_position;
-varying vec2 v2f_uv;
+in vec3 v2f_position;
+in vec2 v2f_uv;
+
+uniform sampler2D sourceTex;
+
+layout(location = 0) out vec4 velocity;
+layout(location = 1) out vec4 prev;
+
+const float dt = 0.03;
+const float velocityCoef = 0.02;
 
 void main() {
-      float dist = distance(v2f_uv, vec2(0.5, 0.5));
-      vec2 vel = vec2(0.0, 0.0);
-
-      if(dist < 0.01){
-            vel = vec2(1.0, 1.0);
-      }
-
-      gl_FragColor = vec4(vel.x, vel.y, 0.0, 1.0);
+      vec4 source = texture(sourceTex, v2f_uv);
+      velocity = vec4(source.xy * velocityCoef, 0.0, 1.0);
+      // prev = vec4(source.xy * velocityCoef * dt, 0.0, 0.0);
+      // velocity = vec4(1.0, 0.0, 0.0, 1.0);
+      prev = vec4(1.0, 0.0, 0.0, 1.0);
 }

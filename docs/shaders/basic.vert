@@ -1,7 +1,13 @@
-#include <common>
+in vec3 position;
+in vec2 uv;
 
-varying vec3 v2f_position;
-varying vec2 v2f_uv;
+out vec3 v2f_position;
+out vec2 v2f_uv;
+
+uniform mat4 modelMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
 
 void main() {
       v2f_position = position;
