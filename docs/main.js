@@ -7,21 +7,41 @@ import {ShaderPass} from "three/examples/jsm/postprocessing/ShaderPass.js";
 import BasicVert from "./shaders/basic.vert?raw";
 import AddSource from "./shaders/addSource.frag?raw";
 import AddVelocity from "./shaders/addVelocity.frag?raw";
+import AddDensity from "./shaders/addDensity.frag?raw";
 import DiffuseVelocity from "./shaders/diffuseVelocity.frag?raw";
+import SwapSolver from "./shaders/swapSolver.frag?raw";
+import DiffuseDensity from "./shaders/diffuseDensity.frag?raw";
+import DrawResult from "./shaders/drawResult.frag?raw";
+import SwapResult from "./shaders/swapResult.frag?raw";
+import InitResult from "./shaders/initResult.frag?raw";
 
-let canvas, renderer, scene, camera, geometry, gui;
+import sampleTex from "./assets/sample.png";
+
+let canvas, renderer, scene, camera, geometry, isDragging;
+let finishInit = false;
 
 let lastMousePos = new THREE.Vector2(0, 0);
-let AddSourceComposer, AddVelocityComposer, DiffuseVelocityComposer;
-let addSourcePass, addVelocityPass, diffuseVelocityPass;
-let sourceRTs, velocityRTs;
+let addSourceComposer,
+  addVelocityComposer,
+  diffuseVelocityComposer,
+  swapSolverComposer,
+  addDensityComposer,
+  diffuseDensityComposer,
+  drawResultComposer,
+  swapResultComposer,
+  initResultComposer;
 
-const param = {
-  value01: 1.0,
-  value02: true,
-  value03: 1.0,
-  value04: "hoge01",
-};
+let addSourcePass,
+  addVelocityPass,
+  diffuseVelocityPass,
+  swapSolverPass,
+  addDensityPass,
+  diffuseDensityPass,
+  initResultPass,
+  drawResultPass,
+  swapResultPass;
+
+let sourceRTs, solverRTs, tempSolverRTs, resultRTs, prevResultRTs;
 
 function init() {
   if (WEBGL.isWebGL2Available()) {
@@ -35,7 +55,12 @@ function init() {
   document.body.appendChild(renderer.domElement);
   scene = new THREE.Scene();
 
-  var isDragging = false;
+  //lightを追加
+  const light = new THREE.DirectionalLight(0xffffff);
+  light.position.set(1, 1, 1).normalize();
+  scene.add(light);
+
+  let isDragging = false;
 
   canvas.addEventListener(
     "mousedown",
@@ -69,7 +94,9 @@ function init() {
         normalizedX,
         normalizedY
       );
-      AddSourceComposer.render();
+      addSourceComposer.render();
+      addVelocityComposer.render();
+      swapSolverComposer.render();
     },
     false
   );
@@ -89,22 +116,43 @@ function init() {
   );
   sourceRTs.texture[0].name = "value";
 
-  velocityRTs = new THREE.WebGLMultipleRenderTargets(
+  solverRTs = new THREE.WebGLMultipleRenderTargets(
     canvas.clientWidth,
     canvas.clientHeight,
     2
   );
-  velocityRTs.texture[0].name = "velocity";
-  velocityRTs.texture[1].name = "prev";
+  solverRTs.texture[0].name = "solver";
+  solverRTs.texture[1].name = "prev";
 
-  //add source
-  AddSourceComposer = new EffectComposer(renderer, sourceRTs);
-  AddSourceComposer.renderToScreen = false;
+  tempSolverRTs = new THREE.WebGLMultipleRenderTargets(
+    canvas.clientWidth,
+    canvas.clientHeight,
+    2
+  );
+  tempSolverRTs.texture[0].name = "tempSolver";
+  tempSolverRTs.texture[1].name = "tempPrev";
+
+  resultRTs = new THREE.WebGLMultipleRenderTargets(
+    canvas.clientWidth,
+    canvas.clientHeight,
+    1
+  );
+  resultRTs.texture[0].name = "result";
+
+  prevResultRTs = new THREE.WebGLMultipleRenderTargets(
+    canvas.clientWidth,
+    canvas.clientHeight,
+    1
+  );
+  prevResultRTs.texture[0].name = "prevResult";
+
+  //1-0 マウスからの外力を計算
+  addSourceComposer = new EffectComposer(renderer, sourceRTs);
+  addSourceComposer.renderToScreen = false;
   const addSourceMatUniforms = {
     source: {value: null},
     radius: {value: null},
   };
-
   const sourceShader = new THREE.RawShaderMaterial({
     uniforms: addSourceMatUniforms,
     vertexShader: BasicVert,
@@ -112,34 +160,154 @@ function init() {
     glslVersion: THREE.GLSL3,
   });
   addSourcePass = new ShaderPass(sourceShader, {});
-  AddSourceComposer.addPass(addSourcePass);
+  addSourceComposer.addPass(addSourcePass);
 
-  // add velocity from source
-  AddVelocityComposer = new EffectComposer(renderer, velocityRTs);
-  AddVelocityComposer.renderToScreen = false;
+  //1-1 マウスからの外力を加算
+  addVelocityComposer = new EffectComposer(renderer, solverRTs);
+  addVelocityComposer.renderToScreen = false;
   const addVelocityMatUniforms = {
     sourceTex: {value: null},
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
   };
-
   const addVelocityShader = new THREE.RawShaderMaterial({
     uniforms: addVelocityMatUniforms,
     vertexShader: BasicVert,
     fragmentShader: AddVelocity,
     glslVersion: THREE.GLSL3,
   });
-  addVelocityPass = new ShaderPass(addVelocityShader, {});
+  addVelocityPass = new ShaderPass(addVelocityShader);
   addVelocityPass.uniforms.sourceTex.value = sourceRTs.texture[0];
-  AddVelocityComposer.addPass(addVelocityPass);
+  addVelocityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
+  addVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  addVelocityComposer.addPass(addVelocityPass);
 
-  // diffuse velocity
-  // DiffuseVelocityComposer = new EffectComposer(renderer, velocityRT);
-  // DiffuseVelocityComposer.renderToScreen = false;
+  //1-2 外力をコピー
+  swapSolverComposer = new EffectComposer(renderer, tempSolverRTs);
+  swapSolverComposer.renderToScreen = false;
+  const swapSolverMatUniforms = {
+    sourceTex: {value: null},
+    prevTex: {value: null},
+  };
+  const swapSolverShader = new THREE.RawShaderMaterial({
+    uniforms: swapSolverMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: SwapSolver,
+    glslVersion: THREE.GLSL3,
+  });
+  swapSolverPass = new ShaderPass(swapSolverShader);
+  swapSolverPass.uniforms.sourceTex.value = solverRTs.texture[0];
+  swapSolverPass.uniforms.prevTex.value = solverRTs.texture[1];
+  swapSolverComposer.addPass(swapSolverPass);
 
-  // diffuseVelocityPass = new ShaderPass({
-  //   vertexShader: BasicVert,
-  //   fragmentShader: DiffuseVelocity,
-  // });
-  // DiffuseVelocityComposer.addPass(diffuseVelocityPass);
+  //2-0 速度を拡散
+  diffuseVelocityComposer = new EffectComposer(renderer, solverRTs);
+  diffuseVelocityComposer.renderToScreen = false;
+  const diffuseVelocityMatUniforms = {
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
+  };
+  const diffuseVelocityShader = new THREE.RawShaderMaterial({
+    uniforms: diffuseVelocityMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: DiffuseVelocity,
+    glslVersion: THREE.GLSL3,
+  });
+  diffuseVelocityPass = new ShaderPass(diffuseVelocityShader);
+  diffuseVelocityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
+  diffuseVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  diffuseVelocityComposer.addPass(diffuseVelocityPass);
+
+  //3-0 密度の外力項を計算
+  addDensityComposer = new EffectComposer(renderer, solverRTs);
+  addDensityComposer.renderToScreen = false;
+  const addDensityMatUniforms = {
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
+  };
+  const addDensityShader = new THREE.RawShaderMaterial({
+    uniforms: addDensityMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: AddDensity,
+    glslVersion: THREE.GLSL3,
+  });
+  addDensityPass = new ShaderPass(addDensityShader);
+  addDensityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
+  addDensityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  addDensityComposer.addPass(addDensityPass);
+
+  //4-0 密度を拡散
+  diffuseDensityComposer = new EffectComposer(renderer, solverRTs);
+  diffuseDensityComposer.renderToScreen = false;
+  const diffuseDensityMatUniforms = {
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
+  };
+  const diffuseDensityShader = new THREE.RawShaderMaterial({
+    uniforms: diffuseDensityMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: DiffuseDensity,
+    glslVersion: THREE.GLSL3,
+  });
+  diffuseDensityPass = new ShaderPass(diffuseDensityShader);
+  diffuseDensityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
+  diffuseDensityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  diffuseDensityComposer.addPass(diffuseDensityPass);
+
+  //00-0 レンダリング
+  drawResultComposer = new EffectComposer(renderer, resultRTs);
+  drawResultComposer.renderToScreen = false;
+  const drawResultMatUniforms = {
+    solverTex: {value: null},
+    prevResultTex: {value: null},
+  };
+  const drawResultShader = new THREE.RawShaderMaterial({
+    uniforms: drawResultMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: DrawResult,
+    glslVersion: THREE.GLSL3,
+  });
+  drawResultPass = new ShaderPass(drawResultShader);
+  drawResultPass.uniforms.solverTex.value = solverRTs.texture[0];
+  drawResultPass.uniforms.prevResultTex.value = prevResultRTs.texture[0];
+  drawResultComposer.addPass(drawResultPass);
+
+  //結果をswap
+  swapResultComposer = new EffectComposer(renderer, prevResultRTs);
+  swapResultComposer.renderToScreen = false;
+  const swapResultMatUniforms = {
+    resultTex: {value: null},
+  };
+  const swapResultShader = new THREE.RawShaderMaterial({
+    uniforms: swapResultMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: SwapResult,
+    glslVersion: THREE.GLSL3,
+  });
+  swapResultPass = new ShaderPass(swapResultShader);
+  swapResultPass.uniforms.resultTex.value = resultRTs.texture[0];
+  swapResultComposer.addPass(swapResultPass);
+
+  //prevResultに初期画像を描画
+  initResultComposer = new EffectComposer(renderer, prevResultRTs);
+  initResultComposer.renderToScreen = false;
+  const initResultMatUniforms = {
+    srcTex: {value: null},
+  };
+  const initResultShader = new THREE.RawShaderMaterial({
+    uniforms: initResultMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: InitResult,
+    glslVersion: THREE.GLSL3,
+  });
+  initResultPass = new ShaderPass(initResultShader);
+  const textureLoader = new THREE.TextureLoader();
+  textureLoader.load(sampleTex, function (texture) {
+    initResultPass.uniforms.srcTex.value = texture;
+    initResultComposer.addPass(initResultPass);
+    initResultComposer.render();
+    finishInit = true;
+  });
 }
 
 function addCamera() {
@@ -149,10 +317,9 @@ function addCamera() {
 }
 
 function addObject() {
-  // plane geometryを追加
   geometry = new THREE.PlaneGeometry(2, 2);
-
-  const mat = new THREE.MeshBasicMaterial({map: velocityRTs.texture[0]});
+  const mat = new THREE.MeshBasicMaterial({map: resultRTs.texture[0]});
+  // const mat = new THREE.MeshBasicMaterial({map: texture});
   const plane = new THREE.Mesh(geometry, mat);
   scene.add(plane);
 }
@@ -165,9 +332,24 @@ function update() {
     camera.aspect = canvas.clientWidth / canvas.clientHeight;
     camera.updateProjectionMatrix();
   }
+  if (!finishInit) return;
 
-  AddVelocityComposer.render();
-  // DiffuseVelocityComposer.render();
+  if (isDragging) {
+    addVelocityComposer.render();
+    swapSolverComposer.render();
+  }
+  diffuseVelocityComposer.render();
+  swapSolverComposer.render();
+  if (isDragging) {
+    addDensityComposer.render();
+    swapSolverComposer.render();
+  }
+
+  // diffuseDensityComposer.render();
+  // swapSolverComposer.render();
+
+  drawResultComposer.render();
+  swapResultComposer.render();
 
   renderer.render(scene, camera);
 }

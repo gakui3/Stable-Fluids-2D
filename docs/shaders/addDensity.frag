@@ -4,20 +4,20 @@ in vec3 v2f_position;
 in vec2 v2f_uv;
 
 uniform sampler2D sourceTex;
-uniform sampler2D tempSolverTex;
+uniform sampler2D tempSourceTex;
 uniform sampler2D tempPrevTex;
 
 layout(location = 0) out vec4 solver;
 layout(location = 1) out vec4 prev;
 
 const float dt = 0.03;
-const float velocityCoef = 30.0;
+const float densityCoef = 30.0;
 
 void main() {
       vec4 source = texture(sourceTex, v2f_uv);
-      vec4 tempSolver = texture(tempSolverTex, v2f_uv);
+      vec4 tempSource = texture(tempSourceTex, v2f_uv);
       vec4 tempPrev = texture(tempPrevTex, v2f_uv);
 
-      solver = vec4(tempSolver.xy + source.xy * velocityCoef * dt, tempSolver.z, 1.0);
-      prev = vec4(source.xy * velocityCoef * dt, tempPrev.z, 0.0);
+      solver = vec4(tempSource.xy, tempSource.z + source.z * densityCoef * dt, 1.0);
+      prev = vec4(tempPrev.xy, tempPrev.z * densityCoef * dt, 0.0);
 }
