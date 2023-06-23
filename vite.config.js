@@ -1,7 +1,7 @@
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
 module.exports = {
-  root: "docs",
+  // root: "src",
   plugins: [basicSsl()],
   assetsInclude: [
     "**/*.glb",
@@ -12,4 +12,7 @@ module.exports = {
     "**/*.png",
     "**/*.jpg",
   ],
+  build: {
+    outDir: "docs",
+  },
 };
