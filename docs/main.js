@@ -139,6 +139,8 @@ function init() {
   const addSourceMatUniforms = {
     source: {value: null},
     radius: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const sourceShader = new THREE.RawShaderMaterial({
     uniforms: addSourceMatUniforms,
@@ -147,6 +149,8 @@ function init() {
     glslVersion: THREE.GLSL3,
   });
   addSourcePass = new ShaderPass(sourceShader, {});
+  addSourcePass.uniforms.canvasWidth.value = canvas.clientWidth;
+  addSourcePass.uniforms.canvasHeight.value = canvas.clientHeight;
   addSourceComposer.addPass(addSourcePass);
 
   //1-1 マウスからの外力を加算
@@ -156,6 +160,8 @@ function init() {
     sourceTex: {value: null},
     tempSolverTex: {value: null},
     tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const addVelocityShader = new THREE.RawShaderMaterial({
     uniforms: addVelocityMatUniforms,
@@ -167,6 +173,8 @@ function init() {
   addVelocityPass.uniforms.sourceTex.value = sourceRTs.texture[0];
   addVelocityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
   addVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  addVelocityPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  addVelocityPass.uniforms.canvasHeight.value = canvas.clientHeight;
   addVelocityComposer.addPass(addVelocityPass);
 
   //1-2 外力をコピー
@@ -175,6 +183,8 @@ function init() {
   const swapSolverMatUniforms = {
     sourceTex: {value: null},
     prevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const swapSolverShader = new THREE.RawShaderMaterial({
     uniforms: swapSolverMatUniforms,
@@ -185,6 +195,8 @@ function init() {
   swapSolverPass = new ShaderPass(swapSolverShader);
   swapSolverPass.uniforms.sourceTex.value = solverRTs.texture[0];
   swapSolverPass.uniforms.prevTex.value = solverRTs.texture[1];
+  swapSolverPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  swapSolverPass.uniforms.canvasHeight.value = canvas.clientHeight;
   swapSolverComposer.addPass(swapSolverPass);
 
   //2-0 速度を拡散
@@ -193,6 +205,8 @@ function init() {
   const diffuseVelocityMatUniforms = {
     tempSolverTex: {value: null},
     tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const diffuseVelocityShader = new THREE.RawShaderMaterial({
     uniforms: diffuseVelocityMatUniforms,
@@ -203,6 +217,8 @@ function init() {
   diffuseVelocityPass = new ShaderPass(diffuseVelocityShader);
   diffuseVelocityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
   diffuseVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  diffuseVelocityPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  diffuseVelocityPass.uniforms.canvasHeight.value = canvas.clientHeight;
   diffuseVelocityComposer.addPass(diffuseVelocityPass);
 
   //3 質量を保存
@@ -212,6 +228,8 @@ function init() {
   const divergenceMatUniforms = {
     tempSolverTex: {value: null},
     tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const divergenceShader = new THREE.RawShaderMaterial({
     uniforms: divergenceMatUniforms,
@@ -223,6 +241,8 @@ function init() {
   divergenceVelocityPass.uniforms.tempSolverTex.value =
     tempSolverRTs.texture[0];
   divergenceVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  divergenceVelocityPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  divergenceVelocityPass.uniforms.canvasHeight.value = canvas.clientHeight;
   divergenceVelocityComposer.addPass(divergenceVelocityPass);
 
   //3-1 速度の発散から得られたポアソン方程式を計算
@@ -231,6 +251,8 @@ function init() {
   const calcPoissonEquationMatUniforms = {
     tempSolverTex: {value: null},
     tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const calcPoissonEquationShader = new THREE.RawShaderMaterial({
     uniforms: calcPoissonEquationMatUniforms,
@@ -242,6 +264,8 @@ function init() {
   calcPoissonEquationPass.uniforms.tempSolverTex.value =
     tempSolverRTs.texture[0];
   calcPoissonEquationPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  calcPoissonEquationPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  calcPoissonEquationPass.uniforms.canvasHeight.value = canvas.clientHeight;
   calcPoissonEquationComposer.addPass(calcPoissonEquationPass);
 
   //3-2 速度の質力保存を計算
@@ -250,6 +274,8 @@ function init() {
   const conservationOfVelocityMatUniforms = {
     tempSolverTex: {value: null},
     tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const conservationOfVelocityShader = new THREE.RawShaderMaterial({
     uniforms: conservationOfVelocityMatUniforms,
@@ -262,6 +288,8 @@ function init() {
     tempSolverRTs.texture[0];
   conservationOfVelocityPass.uniforms.tempPrevTex.value =
     tempSolverRTs.texture[1];
+  conservationOfVelocityPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  conservationOfVelocityPass.uniforms.canvasHeight.value = canvas.clientHeight;
   conservationOfVelocityComposer.addPass(conservationOfVelocityPass);
 
   //n-0 密度の外力項を計算
@@ -270,6 +298,8 @@ function init() {
   const addDensityMatUniforms = {
     tempSolverTex: {value: null},
     tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const addDensityShader = new THREE.RawShaderMaterial({
     uniforms: addDensityMatUniforms,
@@ -280,6 +310,8 @@ function init() {
   addDensityPass = new ShaderPass(addDensityShader);
   addDensityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
   addDensityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  addDensityPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  addDensityPass.uniforms.canvasHeight.value = canvas.clientHeight;
   addDensityComposer.addPass(addDensityPass);
 
   //n-0 密度を拡散
@@ -288,6 +320,8 @@ function init() {
   const diffuseDensityMatUniforms = {
     tempSolverTex: {value: null},
     tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const diffuseDensityShader = new THREE.RawShaderMaterial({
     uniforms: diffuseDensityMatUniforms,
@@ -298,6 +332,8 @@ function init() {
   diffuseDensityPass = new ShaderPass(diffuseDensityShader);
   diffuseDensityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
   diffuseDensityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  diffuseDensityPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  diffuseDensityPass.uniforms.canvasHeight.value = canvas.clientHeight;
   diffuseDensityComposer.addPass(diffuseDensityPass);
 
   //00-0 レンダリング
@@ -306,6 +342,8 @@ function init() {
   const drawResultMatUniforms = {
     solverTex: {value: null},
     prevResultTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const drawResultShader = new THREE.RawShaderMaterial({
     uniforms: drawResultMatUniforms,
@@ -316,6 +354,8 @@ function init() {
   drawResultPass = new ShaderPass(drawResultShader);
   drawResultPass.uniforms.solverTex.value = solverRTs.texture[0];
   drawResultPass.uniforms.prevResultTex.value = prevResultRTs.texture[0];
+  drawResultPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  drawResultPass.uniforms.canvasHeight.value = canvas.clientHeight;
   drawResultComposer.addPass(drawResultPass);
 
   //結果をswap
@@ -339,6 +379,8 @@ function init() {
   initResultComposer.renderToScreen = false;
   const initResultMatUniforms = {
     srcTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
   };
   const initResultShader = new THREE.RawShaderMaterial({
     uniforms: initResultMatUniforms,
@@ -350,6 +392,8 @@ function init() {
   const textureLoader = new THREE.TextureLoader();
   textureLoader.load(sampleTex, function (texture) {
     initResultPass.uniforms.srcTex.value = texture;
+    initResultPass.uniforms.canvasWidth.value = canvas.clientWidth;
+    initResultPass.uniforms.canvasHeight.value = canvas.clientHeight;
     initResultComposer.addPass(initResultPass);
     initResultComposer.render();
     finishInit = true;
@@ -385,14 +429,18 @@ function update() {
   //   addVelocityComposer.render();
   //   swapSolverComposer.render();
   // }
-  diffuseVelocityComposer.render();
-  swapSolverComposer.render();
+  for (let i = 0; i < 3; i++) {
+    diffuseVelocityComposer.render();
+    swapSolverComposer.render();
+  }
   divergenceVelocityComposer.render();
   swapSolverComposer.render();
-  // calcPoissonEquationComposer.render();
-  // swapSolverComposer.render();
-  // conservationOfVelocityComposer.render();
-  // swapSolverComposer.render();
+  for (let i = 0; i < 3; i++) {
+    calcPoissonEquationComposer.render();
+    swapSolverComposer.render();
+  }
+  conservationOfVelocityComposer.render();
+  swapSolverComposer.render();
 
   // if (isDragging) {
   //   addDensityComposer.render();

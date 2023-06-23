@@ -3,8 +3,8 @@ precision highp float;
 in vec3 v2f_position;
 in vec2 v2f_uv;
 
-const float w = 1104.0;//1024.0;
-const float h = 728.0;
+uniform int canvasWidth;
+uniform int canvasHeight;
 const float dt = 0.03;
 const int GS_ITERATE = 2;
 
@@ -15,8 +15,8 @@ layout(location = 0) out vec4 solver;
 layout(location = 1) out vec4 prev;
 
 void main() {
-    float step_x = 1.0/w;
-    float step_y = 1.0/h;
+    float step_x = 1.0/float(canvasWidth);
+    float step_y = 1.0/float(canvasHeight);
     
     int ddx0; 
     int ddx1;

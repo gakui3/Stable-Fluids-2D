@@ -6,6 +6,8 @@ in vec2 v2f_uv;
 uniform sampler2D sourceTex;
 uniform sampler2D tempSourceTex;
 uniform sampler2D tempPrevTex;
+uniform int canvasWidth;
+uniform int canvasHeight;
 
 layout(location = 0) out vec4 solver;
 layout(location = 1) out vec4 prev;

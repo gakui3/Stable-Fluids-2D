@@ -5,9 +5,11 @@ in vec2 v2f_uv;
 
 uniform sampler2D tempSolverTex;
 uniform sampler2D tempPrevTex;
+uniform int canvasWidth;
+uniform int canvasHeight;
 
-const float w = 1104.0;
-const float h = 728.0;
+// const float w = 1104.0;
+// const float h = 728.0;
 
 layout(location = 0) out vec4 solver;
 layout(location = 1) out vec4 prev;
@@ -15,8 +17,8 @@ layout(location = 1) out vec4 prev;
 const float dt = 0.03;
 
 void main() {
-    float step_x = 1.0/w;
-    float step_y = 1.0/h;
+    float step_x = 1.0/float(canvasWidth);
+    float step_y = 1.0/float(canvasHeight);
     vec4 tempSolver = texture(tempSolverTex, v2f_uv);
     vec4 tempSolver_left = texture(tempSolverTex, vec2(v2f_uv.x - step_x, v2f_uv.y));
     vec4 tempSolver_right = texture(tempSolverTex, vec2(v2f_uv.x + step_x, v2f_uv.y));
