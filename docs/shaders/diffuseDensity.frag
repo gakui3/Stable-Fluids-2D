@@ -4,7 +4,7 @@ in vec3 v2f_position;
 in vec2 v2f_uv;
 
 const float dt = 0.03;
-const float visc = 0.0001;
+const float visc = 3.0;
 const int GS_ITERATE = 2;
 
 uniform sampler2D tempSolverTex;
