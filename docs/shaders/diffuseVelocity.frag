@@ -4,10 +4,10 @@ in vec3 v2f_position;
 in vec2 v2f_uv;
 
 const float w = 1104.0;//1024.0;
-const float h = 758.0;
+const float h = 728.0;
 const float dt = 0.03;
-const float visc = 0.01;
-const int GS_ITERATE = 2;
+const float visc = 1.0;
+const int GS_ITERATE = 4;
 
 uniform sampler2D tempSolverTex;
 uniform sampler2D tempPrevTex;
@@ -32,7 +32,7 @@ void main() {
         v = vec4(tempPrev + vec4(a) * (tempVelocity_left + tempVelocity_right + tempVelocity_down + tempVelocity_up)) / (1.0 + 4.0 * a);
         // SetBoundaryVelocity(id, w, h);
     }
-    v.a = 1.0;
+    // v.a = 1.0;
     solver = v;
     prev = tempPrev;
 }

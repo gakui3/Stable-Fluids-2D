@@ -3,17 +3,16 @@ precision highp float;
 in vec3 v2f_position;
 in vec2 v2f_uv;
 
-const float w = 1104.0;//1024.0;
-const float h = 728.0;
-const float dt = 0.03;
-const float visc = 0.01;
-const int GS_ITERATE = 2;
-
 uniform sampler2D tempSolverTex;
 uniform sampler2D tempPrevTex;
 
+const float w = 1104.0;
+const float h = 728.0;
+
 layout(location = 0) out vec4 solver;
 layout(location = 1) out vec4 prev;
+
+const float dt = 0.03;
 
 void main() {
     float step_x = 1.0/w;
@@ -24,15 +23,17 @@ void main() {
     vec4 tempSolver_up = texture(tempSolverTex, vec2(v2f_uv.x, v2f_uv.y + step_y));
     vec4 tempSolver_down = texture(tempSolverTex, vec2(v2f_uv.x, v2f_uv.y - step_y));
 
-    vec4 tempPrev = texture(tempPrevTex, v2f_uv);
-    float a = dt * visc * w * h;
+    prev = vec4(0.0,
+                -0.5 * (step_x * tempSolver_right.x - tempSolver_left.x) +
+                (step_y * tempSolver_up.y - tempSolver_down.y),
+                tempSolver.z, 1.0);
+    // prev = vec4(0.0,
+    //             -1.0 / (2.0 * step_x) * (step_x * tempSolver_right.x - tempSolver_left.x) +
+    //             (step_y * tempSolver_up.y - tempSolver_down.y),
+    //             tempSolver.z, 1.0);
 
-    vec4 v = vec4(0.0, 0.0, 0.0, 1.0);
-    for (int k = 0; k < GS_ITERATE; k++) {
-        v = vec4(tempSolver.xy, tempPrev.z + a * (tempSolver_left.z + tempSolver_right.z + tempSolver_down.z + tempSolver_up.z) / (1.0 + 4.0 * a), 1.0);
-        // SetBoundaryVelocity(id, w, h);
-    }
-    v.a = 1.0;
-    solver = v;
-    prev = tempPrev;
+    solver = tempSolver;
+    
+    // SetBoundaryDivergence(id, w, h);
+    // SetBoundaryDivPositive(id, w, h);
 }

@@ -4,7 +4,7 @@ in vec3 v2f_position;
 in vec2 v2f_uv;
 
 const float w = 1104.0;//1024.0;
-const float h = 758.0;
+const float h = 728.0;
 const float dt = 0.03;
 const int GS_ITERATE = 2;
 

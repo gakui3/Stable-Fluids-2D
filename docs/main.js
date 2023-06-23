@@ -14,10 +14,13 @@ import DiffuseDensity from "./shaders/diffuseDensity.frag?raw";
 import DrawResult from "./shaders/drawResult.frag?raw";
 import SwapResult from "./shaders/swapResult.frag?raw";
 import InitResult from "./shaders/initResult.frag?raw";
+import DivergenceVelocity from "./shaders/divergenceVelocity.frag?raw";
+import ConservationOfVelocity from "./shaders/conservationOfVelocity.frag?raw";
+import CalcPoissonEquation from "./shaders/calcPoissonEquation.frag?raw";
 
 import sampleTex from "./assets/sample.png";
 
-let canvas, renderer, scene, camera, geometry, isDragging;
+let canvas, renderer, scene, camera, geometry, isDragging, rtWidth, rtHeight;
 let finishInit = false;
 
 let lastMousePos = new THREE.Vector2(0, 0);
@@ -29,7 +32,10 @@ let addSourceComposer,
   diffuseDensityComposer,
   drawResultComposer,
   swapResultComposer,
-  initResultComposer;
+  initResultComposer,
+  divergenceVelocityComposer,
+  conservationOfVelocityComposer,
+  calcPoissonEquationComposer;
 
 let addSourcePass,
   addVelocityPass,
@@ -39,111 +45,92 @@ let addSourcePass,
   diffuseDensityPass,
   initResultPass,
   drawResultPass,
-  swapResultPass;
+  swapResultPass,
+  divergenceVelocityPass,
+  conservationOfVelocityPass,
+  calcPoissonEquationPass;
 
 let sourceRTs, solverRTs, tempSolverRTs, resultRTs, prevResultRTs;
 
 function init() {
-  if (WEBGL.isWebGL2Available()) {
-    console.log("webgl2");
-  }
   canvas = document.querySelector("#c");
-  const context = canvas.getContext("webgl2", {antialias: true});
-  renderer = new THREE.WebGLRenderer({canvas, context});
+  // const context = canvas.getContext("webgl2", {antialias: true});
+  renderer = new THREE.WebGLRenderer({canvas});
+  console.log(canvas.clientWidth, canvas.clientHeight);
+
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   // 背景色を白に設定
-  renderer.setClearColor(0xffffff);
+  renderer.setClearColor(0x0fffff);
   document.body.appendChild(renderer.domElement);
   scene = new THREE.Scene();
 
-  //lightを追加
-  const light = new THREE.DirectionalLight(0xffffff);
-  light.position.set(1, 1, 1).normalize();
-  scene.add(light);
+  rtWidth = canvas.clientWidth;
+  rtHeight = canvas.clientHeight;
 
   let isDragging = false;
 
-  canvas.addEventListener(
-    "mousedown",
-    function (event) {
-      isDragging = true;
-    },
-    false
-  );
+  canvas.addEventListener("mousedown", function (event) {
+    isDragging = true;
+  });
 
-  canvas.addEventListener(
-    "mousemove",
-    function (event) {
-      if (!isDragging) return; // ドラッグ中でなければ終了
+  canvas.addEventListener("mousemove", function (event) {
+    if (!isDragging) return; // ドラッグ中でなければ終了
 
-      var rect = canvas.getBoundingClientRect();
-      var x = event.clientX - rect.left; // canvas内の相対座標
-      var y = event.clientY - rect.top; // canvas内の相対座標
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left; // canvas内の相対座標
+    const y = event.clientY - rect.top; // canvas内の相対座標
 
-      // 座標を正規化（0~1の範囲に変換）
-      var normalizedX = x / canvas.clientWidth;
-      var normalizedY = 1 - y / canvas.clientHeight;
+    // 座標を正規化（0~1の範囲に変換）
+    var normalizedX = x / canvas.clientWidth;
+    var normalizedY = 1 - y / canvas.clientHeight;
 
-      let dpdt = new THREE.Vector2(x, y).sub(lastMousePos);
-      lastMousePos = new THREE.Vector2(x, y);
-      let velocitySource = dpdt.clampLength(0.0, 1.0);
+    let dpdt = new THREE.Vector2(x, y)
+      .sub(lastMousePos)
+      .multiply(new THREE.Vector2(-1, 1));
+    lastMousePos = new THREE.Vector2(x, y);
+    let velocitySource = dpdt.clampLength(0, 1.0);
 
-      addSourcePass.uniforms.radius.value = 0.02;
-      addSourcePass.uniforms.source.value = new THREE.Vector4(
-        velocitySource.x,
-        velocitySource.y,
-        normalizedX,
-        normalizedY
-      );
-      addSourceComposer.render();
-      addVelocityComposer.render();
-      swapSolverComposer.render();
-    },
-    false
-  );
+    addSourcePass.uniforms.radius.value = 0.05;
+    addSourcePass.uniforms.source.value = new THREE.Vector4(
+      velocitySource.x,
+      velocitySource.y,
+      normalizedX,
+      normalizedY
+    );
+    addSourceComposer.render();
+    addVelocityComposer.render();
+    swapSolverComposer.render();
+  });
 
-  canvas.addEventListener(
-    "mouseup",
-    function (event) {
-      isDragging = false;
-    },
-    false
-  );
+  canvas.addEventListener("mouseup", function (event) {
+    isDragging = false;
+  });
 
-  sourceRTs = new THREE.WebGLMultipleRenderTargets(
-    canvas.clientWidth,
-    canvas.clientHeight,
-    1
-  );
+  sourceRTs = new THREE.WebGLMultipleRenderTargets(rtWidth, rtHeight, 1, {
+    type: THREE.FloatType,
+  });
   sourceRTs.texture[0].name = "value";
 
-  solverRTs = new THREE.WebGLMultipleRenderTargets(
-    canvas.clientWidth,
-    canvas.clientHeight,
-    2
-  );
+  solverRTs = new THREE.WebGLMultipleRenderTargets(rtWidth, rtHeight, 2, {
+    type: THREE.FloatType,
+  });
   solverRTs.texture[0].name = "solver";
   solverRTs.texture[1].name = "prev";
 
-  tempSolverRTs = new THREE.WebGLMultipleRenderTargets(
-    canvas.clientWidth,
-    canvas.clientHeight,
-    2
-  );
+  tempSolverRTs = new THREE.WebGLMultipleRenderTargets(rtWidth, rtHeight, 2, {
+    type: THREE.FloatType,
+  });
   tempSolverRTs.texture[0].name = "tempSolver";
   tempSolverRTs.texture[1].name = "tempPrev";
 
-  resultRTs = new THREE.WebGLMultipleRenderTargets(
-    canvas.clientWidth,
-    canvas.clientHeight,
-    1
-  );
+  resultRTs = new THREE.WebGLMultipleRenderTargets(rtWidth, rtHeight, 1, {
+    type: THREE.FloatType,
+  });
   resultRTs.texture[0].name = "result";
 
-  prevResultRTs = new THREE.WebGLMultipleRenderTargets(
-    canvas.clientWidth,
-    canvas.clientHeight,
-    1
-  );
+  prevResultRTs = new THREE.WebGLMultipleRenderTargets(rtWidth, rtHeight, 1, {
+    type: THREE.FloatType,
+  });
   prevResultRTs.texture[0].name = "prevResult";
 
   //1-0 マウスからの外力を計算
@@ -218,7 +205,66 @@ function init() {
   diffuseVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
   diffuseVelocityComposer.addPass(diffuseVelocityPass);
 
-  //3-0 密度の外力項を計算
+  //3 質量を保存
+  //3-0 速度の発散を計算
+  divergenceVelocityComposer = new EffectComposer(renderer, solverRTs);
+  divergenceVelocityComposer.renderToScreen = false;
+  const divergenceMatUniforms = {
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
+  };
+  const divergenceShader = new THREE.RawShaderMaterial({
+    uniforms: divergenceMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: DivergenceVelocity,
+    glslVersion: THREE.GLSL3,
+  });
+  divergenceVelocityPass = new ShaderPass(divergenceShader);
+  divergenceVelocityPass.uniforms.tempSolverTex.value =
+    tempSolverRTs.texture[0];
+  divergenceVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  divergenceVelocityComposer.addPass(divergenceVelocityPass);
+
+  //3-1 速度の発散から得られたポアソン方程式を計算
+  calcPoissonEquationComposer = new EffectComposer(renderer, solverRTs);
+  calcPoissonEquationComposer.renderToScreen = false;
+  const calcPoissonEquationMatUniforms = {
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
+  };
+  const calcPoissonEquationShader = new THREE.RawShaderMaterial({
+    uniforms: calcPoissonEquationMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: CalcPoissonEquation,
+    glslVersion: THREE.GLSL3,
+  });
+  calcPoissonEquationPass = new ShaderPass(calcPoissonEquationShader);
+  calcPoissonEquationPass.uniforms.tempSolverTex.value =
+    tempSolverRTs.texture[0];
+  calcPoissonEquationPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  calcPoissonEquationComposer.addPass(calcPoissonEquationPass);
+
+  //3-2 速度の質力保存を計算
+  conservationOfVelocityComposer = new EffectComposer(renderer, solverRTs);
+  conservationOfVelocityComposer.renderToScreen = false;
+  const conservationOfVelocityMatUniforms = {
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
+  };
+  const conservationOfVelocityShader = new THREE.RawShaderMaterial({
+    uniforms: conservationOfVelocityMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: ConservationOfVelocity,
+    glslVersion: THREE.GLSL3,
+  });
+  conservationOfVelocityPass = new ShaderPass(conservationOfVelocityShader);
+  conservationOfVelocityPass.uniforms.tempSolverTex.value =
+    tempSolverRTs.texture[0];
+  conservationOfVelocityPass.uniforms.tempPrevTex.value =
+    tempSolverRTs.texture[1];
+  conservationOfVelocityComposer.addPass(conservationOfVelocityPass);
+
+  //n-0 密度の外力項を計算
   addDensityComposer = new EffectComposer(renderer, solverRTs);
   addDensityComposer.renderToScreen = false;
   const addDensityMatUniforms = {
@@ -236,7 +282,7 @@ function init() {
   addDensityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
   addDensityComposer.addPass(addDensityPass);
 
-  //4-0 密度を拡散
+  //n-0 密度を拡散
   diffuseDensityComposer = new EffectComposer(renderer, solverRTs);
   diffuseDensityComposer.renderToScreen = false;
   const diffuseDensityMatUniforms = {
@@ -318,8 +364,9 @@ function addCamera() {
 
 function addObject() {
   geometry = new THREE.PlaneGeometry(2, 2);
+  const textureLoader = new THREE.TextureLoader();
   const mat = new THREE.MeshBasicMaterial({map: resultRTs.texture[0]});
-  // const mat = new THREE.MeshBasicMaterial({map: texture});
+  // const mat = new THREE.MeshBasicMaterial({map: solverRTs.texture[0]});
   const plane = new THREE.Mesh(geometry, mat);
   scene.add(plane);
 }
@@ -334,17 +381,23 @@ function update() {
   }
   if (!finishInit) return;
 
-  if (isDragging) {
-    addVelocityComposer.render();
-    swapSolverComposer.render();
-  }
+  // if (isDragging) {
+  //   addVelocityComposer.render();
+  //   swapSolverComposer.render();
+  // }
   diffuseVelocityComposer.render();
   swapSolverComposer.render();
-  if (isDragging) {
-    addDensityComposer.render();
-    swapSolverComposer.render();
-  }
+  divergenceVelocityComposer.render();
+  swapSolverComposer.render();
+  // calcPoissonEquationComposer.render();
+  // swapSolverComposer.render();
+  // conservationOfVelocityComposer.render();
+  // swapSolverComposer.render();
 
+  // if (isDragging) {
+  //   addDensityComposer.render();
+  //   swapSolverComposer.render();
+  // }
   // diffuseDensityComposer.render();
   // swapSolverComposer.render();
 

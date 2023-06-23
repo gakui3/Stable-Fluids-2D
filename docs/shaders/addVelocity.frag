@@ -11,7 +11,7 @@ layout(location = 0) out vec4 solver;
 layout(location = 1) out vec4 prev;
 
 const float dt = 0.03;
-const float velocityCoef = 30.0;
+const float velocityCoef = 1.0;
 
 void main() {
       vec4 source = texture(sourceTex, v2f_uv);
@@ -19,5 +19,5 @@ void main() {
       vec4 tempPrev = texture(tempPrevTex, v2f_uv);
 
       solver = vec4(tempSolver.xy + source.xy * velocityCoef * dt, tempSolver.z, 1.0);
-      prev = vec4(source.xy * velocityCoef * dt, tempPrev.z, 0.0);
+      prev = vec4(source.xy * velocityCoef * dt, tempPrev.z, 1.0);
 }
