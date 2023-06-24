@@ -17,6 +17,7 @@ import InitResult from "./shaders/initResult.frag?raw";
 import DivergenceVelocity from "./shaders/divergenceVelocity.frag?raw";
 import ConservationOfVelocity from "./shaders/conservationOfVelocity.frag?raw";
 import CalcPoissonEquation from "./shaders/calcPoissonEquation.frag?raw";
+import AdvectVelocity from "./shaders/advectVelocity.frag?raw";
 
 import sampleTex from "./assets/sample.png";
 
@@ -35,7 +36,8 @@ let addSourceComposer,
   initResultComposer,
   divergenceVelocityComposer,
   conservationOfVelocityComposer,
-  calcPoissonEquationComposer;
+  calcPoissonEquationComposer,
+  advectVelocityComposer;
 
 let addSourcePass,
   addVelocityPass,
@@ -48,7 +50,8 @@ let addSourcePass,
   swapResultPass,
   divergenceVelocityPass,
   conservationOfVelocityPass,
-  calcPoissonEquationPass;
+  calcPoissonEquationPass,
+  advectVelocityPass;
 
 let sourceRTs, solverRTs, tempSolverRTs, resultRTs, prevResultRTs;
 
@@ -398,6 +401,28 @@ function init() {
     initResultComposer.render();
     finishInit = true;
   });
+
+  //advectVelocityのcomposerを設定
+  advectVelocityComposer = new EffectComposer(renderer, solverRTs);
+  advectVelocityComposer.renderToScreen = false;
+  const advectVelocityMatUniforms = {
+    tempSolverTex: {value: null},
+    tempPrevTex: {value: null},
+    canvasWidth: {value: null},
+    canvasHeight: {value: null},
+  };
+  const advectVelocityShader = new THREE.RawShaderMaterial({
+    uniforms: advectVelocityMatUniforms,
+    vertexShader: BasicVert,
+    fragmentShader: AdvectVelocity,
+    glslVersion: THREE.GLSL3,
+  });
+  advectVelocityPass = new ShaderPass(advectVelocityShader);
+  advectVelocityPass.uniforms.tempSolverTex.value = tempSolverRTs.texture[0];
+  advectVelocityPass.uniforms.tempPrevTex.value = tempSolverRTs.texture[1];
+  advectVelocityPass.uniforms.canvasWidth.value = canvas.clientWidth;
+  advectVelocityPass.uniforms.canvasHeight.value = canvas.clientHeight;
+  advectVelocityComposer.addPass(advectVelocityPass);
 }
 
 function addCamera() {
@@ -441,6 +466,8 @@ function update() {
   }
   conservationOfVelocityComposer.render();
   swapSolverComposer.render();
+  // advectVelocityComposer.render();
+  // swapSolverComposer.render();
 
   // if (isDragging) {
   //   addDensityComposer.render();
@@ -471,6 +498,5 @@ function resizeRendererToDisplaySize(renderer) {
   init();
   addCamera();
   addObject();
-  // addGUI();
   update();
 })();
