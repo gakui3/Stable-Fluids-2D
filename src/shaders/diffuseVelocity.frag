@@ -7,7 +7,7 @@ in vec2 v2f_uv;
 // const float h = 728.0;
 const float dt = 0.03;
 const float visc = 1.0;
-const int GS_ITERATE = 4;
+const int GS_ITERATE = 10;
 
 uniform sampler2D tempSolverTex;
 uniform sampler2D tempPrevTex;

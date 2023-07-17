@@ -450,25 +450,37 @@ function update() {
   }
   if (!finishInit) return;
 
-  // if (isDragging) {
-  //   addVelocityComposer.render();
-  //   swapSolverComposer.render();
-  // }
-  for (let i = 0; i < 3; i++) {
+  //拡散項
+  for (let i = 0; i < 10; i++) {
     diffuseVelocityComposer.render();
     swapSolverComposer.render();
   }
+
+  //速度場の質量保存
   divergenceVelocityComposer.render();
   swapSolverComposer.render();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     calcPoissonEquationComposer.render();
     swapSolverComposer.render();
   }
   conservationOfVelocityComposer.render();
   swapSolverComposer.render();
-  // advectVelocityComposer.render();
-  // swapSolverComposer.render();
 
+  //速度場の移流項
+  advectVelocityComposer.render();
+  swapSolverComposer.render();
+
+  //速度場の質量保存
+  divergenceVelocityComposer.render();
+  swapSolverComposer.render();
+  for (let i = 0; i < 5; i++) {
+    calcPoissonEquationComposer.render();
+    swapSolverComposer.render();
+  }
+  conservationOfVelocityComposer.render();
+  swapSolverComposer.render();
+
+  //密度場
   // if (isDragging) {
   //   addDensityComposer.render();
   //   swapSolverComposer.render();
@@ -476,6 +488,7 @@ function update() {
   // diffuseDensityComposer.render();
   // swapSolverComposer.render();
 
+  //結果を描画
   drawResultComposer.render();
   swapResultComposer.render();
 
